@@ -1,7 +1,8 @@
 #include <iostream>
 #include "openGL_headers.h"
 #include "math_headers.h"
-
+#include "particleSystem.h"
+#include "stb_image_write.h"
 
 int window_width = 1024;
 int window_height = 768;
@@ -25,9 +26,9 @@ GLuint m_uniform_location[2];
 GLuint m_vert_handle, m_frag_handle, m_shaderprog_handle;
 
 //----------Camera Control----------//
-float eye_distance = 20.0f;
-float head = 45.0f, pitch = 45.0f;
-glm::vec3 cam_pos, up(0.0f, 1.0f, 0.0f), lookat(0.0f, 4.0f, 0.0f);
+float eye_distance = 35.f;
+float head = 25.f, pitch = 55.f;
+glm::vec3 cam_pos, up(0.0f, 1.0f, 0.0f), lookat(0.0f, 0.0f, 0.0f);
 
 //----------functions----------//
 // declare
@@ -237,9 +238,9 @@ void aimCamera(void)
     glUniformMatrix4fv(m_uniform_location[1], 1, false, &projection[0][0]);
 }
 
-void grabScreen(void)
+void grabScreen(const particleSystem& ps)
 {
- /*   unsigned char* bitmapData = new unsigned char[3 * window_width * window_height];
+    unsigned char* bitmapData = new unsigned char[3 * window_width * window_height];
 
     for (int i=0; i < window_height; i++) 
     {
@@ -248,11 +249,12 @@ void grabScreen(void)
     }
 
     char anim_filename[2048];
-    sprintf_s(anim_filename, 2048, "output/PBD_no_self_intersect_%04d.png", frame_num);
+    sprintf_s(anim_filename, 2048, "output/sph.png", frame_num);
 
     stbi_write_png(anim_filename, window_width, window_height, 3, bitmapData, window_width * 3);
 
-    delete [] bitmapData;*/
+    delete [] bitmapData;
+	//ps.outputCenter(frame_num, "output/output.txt");
 }
 
 void activate_shaderprog(GLuint shaderprog)
@@ -273,6 +275,14 @@ void deactivate_shaderprog(GLuint shaderprog)
 
 int main(int argc, char** argv)
 {
+	{
+		unsigned int cw;
+		// Note : same result with controlfp
+		cw = _control87(0,0) & MCW_EM;
+		cw &= ~(_EM_INVALID|_EM_ZERODIVIDE|_EM_OVERFLOW);
+		_control87(cw,MCW_EM);
+	}//enable float point exception
+
     bool run = GL_TRUE;
 
     if(!glfwInit())
@@ -307,11 +317,9 @@ int main(int argc, char** argv)
     glViewport(0, 0, window_width, window_height);
 
     VBO vbo_handle;
-    //Scene scene("../Scene/test_scene.xml");
-    // TODO: change here if you want to use a smaller iteration number.
-   // ClothSim cloth_sim(10);
-    // TODO: change here if you want to modify the dimension.
-  //  cloth_sim.initialize(40, 40, glm::vec3(-5.0f, 10.0f, -5.0f), glm::vec3(5.0f, 10.0f, 5.0f));
+
+	//particleSystem ps(16);//16^3=4096
+	particleSystem ps(16);
 
     lastTime = glfwGetTime();
     while(run)
@@ -320,21 +328,24 @@ int main(int argc, char** argv)
 
         aimCamera();
 
-        if(!pause)
+       /* if(!pause)
             cloth_sim.update(&scene, 0.006325f);
         if(flip_draw_mode)
         {
             cloth_sim.flip_draw_mode();
             flip_draw_mode = false;
-        }
+        }*/
         activate_shaderprog(m_shaderprog_handle);
-        cloth_sim.draw(vbo_handle);
-        scene.draw(vbo_handle);
+		
+		
+		ps.Draw(vbo_handle);
+		ps.drawWireGrid();
+
         deactivate_shaderprog(m_shaderprog_handle);
 
         drawAxes();
         if(!pause && record)
-            grabScreen();
+            grabScreen(ps);
         frame_num++;
 
         now = glfwGetTime();
